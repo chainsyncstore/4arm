@@ -1,0 +1,81 @@
+{
+  "dashboard": {
+    "title": "4ARM - Account Metrics",
+    "tags": ["4arm", "accounts"],
+    "timezone": "UTC",
+    "schemaVersion": 36,
+    "refresh": "30s",
+    "panels": [
+      {
+        "title": "Account Status Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "fourarm_accounts_by_status",
+            "legendFormat": "{{status}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0}
+      },
+      {
+        "title": "Ban Rate Trend",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(fourarm_accounts_banned_total[1h])",
+            "legendFormat": "Bans/hour"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0}
+      },
+      {
+        "title": "Cooldown Queue Depth",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "fourarm_accounts_cooldown",
+            "legendFormat": "In Cooldown"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0}
+      },
+      {
+        "title": "Accounts by Type",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "fourarm_accounts_by_type",
+            "legendFormat": "{{type}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "title": "Account Creation Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(fourarm_accounts_created_total[1h])",
+            "legendFormat": "Created/hour"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "title": "Stream Success by Account Type",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(fourarm_streams_total{account_type=\"premium\"}[5m])",
+            "legendFormat": "Premium"
+          },
+          {
+            "expr": "rate(fourarm_streams_total{account_type=\"free\"}[5m])",
+            "legendFormat": "Free"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - 4arm-network
+
+  backend:
+    # This is a placeholder - the actual backend should be configured separately
+    # or this compose file should be merged with the backend docker-compose
+    image: nginx:alpine
+    ports:
+      - "8000:80"
+    networks:
+      - 4arm-network
+
+networks:
+  4arm-network:
+    driver: bridge

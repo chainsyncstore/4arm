@@ -1,0 +1,99 @@
+{
+  "dashboard": {
+    "title": "4ARM - Streaming Metrics",
+    "tags": ["4arm", "streaming"],
+    "timezone": "UTC",
+    "schemaVersion": 36,
+    "refresh": "10s",
+    "panels": [
+      {
+        "title": "Active Streams",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "fourarm_active_streams",
+            "legendFormat": "Active"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "title": "Total Streams (24h)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "increase(fourarm_streams_total[24h])",
+            "legendFormat": "Total"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0}
+      },
+      {
+        "title": "Active Instances",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "fourarm_active_instances",
+            "legendFormat": "Instances"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0}
+      },
+      {
+        "title": "Warming Accounts",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "fourarm_warming_accounts",
+            "legendFormat": "Warming"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "title": "Streams per Hour",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(fourarm_streams_total[1h])",
+            "legendFormat": "Streams/hour"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}
+      },
+      {
+        "title": "Stream Success Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(fourarm_streams_total{result=\"success\"}[5m]) / rate(fourarm_streams_total[5m])",
+            "legendFormat": "Success %"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}
+      },
+      {
+        "title": "Rate Limit Blocks",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(fourarm_rate_limit_blocks[5m])",
+            "legendFormat": "{{reason}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12}
+      },
+      {
+        "title": "Active Instances Over Time",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "fourarm_active_instances",
+            "legendFormat": "Instances"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12}
+      }
+    ]
+  }
+}

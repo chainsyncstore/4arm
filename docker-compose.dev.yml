@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: 4arm
+      POSTGRES_USER: 4arm
+      POSTGRES_PASSWORD: 4arm_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:

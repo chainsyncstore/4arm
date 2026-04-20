@@ -1,0 +1,80 @@
+{
+  "dashboard": {
+    "title": "4ARM - System Metrics",
+    "tags": ["4arm", "system"],
+    "timezone": "UTC",
+    "schemaVersion": 36,
+    "refresh": "30s",
+    "panels": [
+      {
+        "title": "CPU Usage",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "title": "Memory Usage",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "title": "Disk Usage",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "node_filesystem_size_bytes{fstype!~\"tmpfs|overlay\"} - node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay\"}",
+            "legendFormat": "{{instance}} - {{mountpoint}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "title": "Network I/O",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_bytes_total[5m])",
+            "legendFormat": "{{instance}} RX"
+          },
+          {
+            "expr": "rate(node_network_transmit_bytes_total[5m])",
+            "legendFormat": "{{instance}} TX"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "title": "Container Count",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count by (instance) (container_last_seen)",
+            "legendFormat": "Containers"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 16}
+      },
+      {
+        "title": "Docker Events",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{job=\"cadvisor\"}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 18, "x": 6, "y": 16}
+      }
+    ]
+  }
+}
