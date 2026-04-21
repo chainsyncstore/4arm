@@ -186,32 +186,72 @@ class RegistrationService:
         await asyncio.sleep(1)
 
     async def _fill_dob(self, device_id: str, dob: dict) -> None:
+        """Fill Spotify's DatePicker (three NumberPicker wheels: month | day | year).
+
+        Each NumberPicker exposes a central EditText that accepts typed input,
+        so we locate them via the rendered XML and type directly.
+        """
         day = str(dob["day"])
-        month = f"{dob['month']:02d}"
+        month_name = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ][dob["month"] - 1]
         year = str(dob["year"])
 
-        day_focused = await self._tap_target(device_id, ["day"], [(220, 1040), (220, 1140)])
-        if day_focused:
-            if not await self.adb.input_text(device_id, day):
-                raise RuntimeError("Failed to input day of birth")
+        # Find the three NumberPicker EditText centers from the current UI dump.
+        xml = await self.adb.get_screen_xml(device_id)
+        picker_centers = self._find_number_picker_edittexts(xml)
 
-            month_focused = await self._tap_target(device_id, ["month"], [(540, 1040), (540, 1140)])
-            if not month_focused or not await self.adb.input_text(device_id, month):
-                raise RuntimeError("Failed to input month of birth")
-
-            year_focused = await self._tap_target(device_id, ["year"], [(860, 1040), (860, 1140)])
-            if not year_focused or not await self.adb.input_text(device_id, year):
-                raise RuntimeError("Failed to input year of birth")
+        if len(picker_centers) >= 3:
+            # Order by x coordinate: month, day, year
+            picker_centers.sort(key=lambda c: c[0])
+            month_c, day_c, year_c = picker_centers[:3]
+            for center, value, label in (
+                (month_c, month_name, "month"),
+                (day_c, day, "day"),
+                (year_c, year, "year"),
+            ):
+                await self.adb.tap(device_id, *center)
+                await asyncio.sleep(0.5)
+                await self.adb.send_keyevent(device_id, 123)
+                for _ in range(6):
+                    await self.adb.send_keyevent(device_id, 67)
+                if not await self.adb.input_text(device_id, value):
+                    raise RuntimeError(f"Failed to input {label} of birth")
+                await asyncio.sleep(0.5)
             await asyncio.sleep(1)
             return
 
+        # Fallback: single combined field
         await self._fill_text_field(
             device_id,
-            f"{month}{day}{year}",
+            f"{month_name}{day}{year}",
             ["date of birth", "birthday", "dob"],
             [(540, 1100)],
             "date of birth",
         )
+
+    def _find_number_picker_edittexts(self, xml: str) -> list[tuple[int, int]]:
+        """Return centers of EditText nodes nested inside NumberPicker elements."""
+        if not xml:
+            return []
+        centers: list[tuple[int, int]] = []
+        # Find each NumberPicker block and extract the EditText inside it.
+        for np_match in re.finditer(
+            r'<node[^>]*class="android\.widget\.NumberPicker"[^>]*>.*?</node>',
+            xml, re.DOTALL,
+        ):
+            block = np_match.group(0)
+            et_match = re.search(
+                r'<node[^>]*class="android\.widget\.EditText"[^>]*bounds="(\[[^\"]+\]\[[^\"]+\])"',
+                block,
+            )
+            if not et_match:
+                continue
+            center = self._parse_bounds(et_match.group(1))
+            if center:
+                centers.append(center)
+        return centers
 
     async def _complete_signup_flow(
         self,
