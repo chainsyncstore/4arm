@@ -244,9 +244,13 @@ class ADBService:
             "-s", device_id, "shell",
             "monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1"
         )
-        if rc != 0:
-            logger.error(f"launch_app failed on {device_id} ({package}): rc={rc} stdout={stdout!r} stderr={stderr!r}")
-        return rc == 0
+        # Redroid sometimes returns non-zero even when monkey launched successfully
+        # (e.g. "SYS_KEYS has no physical keys"). Verify by checking the app process.
+        await asyncio.sleep(2)
+        if await self.is_app_running(device_id, package):
+            return True
+        logger.error(f"launch_app failed on {device_id} ({package}): rc={rc} stdout={stdout!r} stderr={stderr!r}")
+        return False
 
     async def _ensure_connected(self, device_id: str) -> None:
         """Make sure adb server has an active connection to device_id (host:port)."""
