@@ -88,15 +88,18 @@ class RegistrationService:
             return None
 
         normalized_patterns = [pattern.lower() for pattern in patterns]
+        # Prefer clickable matches over non-clickable ones so TextView titles
+        # don't shadow the actual Button/EditText we want to tap.
+        clickable_hit: Optional[tuple[int, int]] = None
+        fallback_hit: Optional[tuple[int, int]] = None
+
         for node_match in re.finditer(r"<node\b([^>]*)/?>", xml):
             attrs = node_match.group(1)
             text_match = re.search(r'text="([^"]*)"', attrs)
             desc_match = re.search(r'content-desc="([^"]*)"', attrs)
-            resource_match = re.search(r'resource-id="([^"]*)"', attrs)
             candidate_text = " ".join(filter(None, [
                 text_match.group(1) if text_match else "",
                 desc_match.group(1) if desc_match else "",
-                resource_match.group(1) if resource_match else "",
             ])).lower()
 
             if not any(pattern in candidate_text for pattern in normalized_patterns):
@@ -105,12 +108,18 @@ class RegistrationService:
             bounds_match = re.search(r'bounds="(\[[^\"]+\]\[[^\"]+\])"', attrs)
             if not bounds_match:
                 continue
-
             center = self._parse_bounds(bounds_match.group(1))
-            if center:
-                return center
+            if not center:
+                continue
 
-        return None
+            is_clickable = 'clickable="true"' in attrs
+            is_focusable = 'focusable="true"' in attrs
+            if is_clickable or is_focusable:
+                return center
+            if fallback_hit is None:
+                fallback_hit = center
+
+        return clickable_hit or fallback_hit
 
     async def _tap_target(
         self,
