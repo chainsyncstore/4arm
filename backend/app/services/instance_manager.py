@@ -47,7 +47,7 @@ class InstanceManager:
 
             docker_client = docker.from_env()
 
-            # 1. Create Redroid container
+            # 1. Create Redroid container (publish ADB port to a random host port)
             redroid = docker_client.containers.run(
                 "redroid/redroid:12.0.0-latest",
                 name=f"redroid-{name}",
@@ -56,6 +56,7 @@ class InstanceManager:
                 cpu_quota=int(cpu_cores * 100000),
                 cpu_period=100000,
                 network="4arm-net",
+                ports={"5555/tcp": None},
                 volumes={f"redroid-{name}-data": {"bind": "/data", "mode": "rw"}},
                 environment={
                     "androidboot.hardware": "redroid",
