@@ -213,12 +213,15 @@ class RegistrationService:
             ):
                 await self.adb.tap(device_id, *center)
                 await asyncio.sleep(0.5)
-                await self.adb.send_keyevent(device_id, 123)
+                await self.adb.send_keyevent(device_id, 123)  # MOVE_END
                 for _ in range(6):
-                    await self.adb.send_keyevent(device_id, 67)
+                    await self.adb.send_keyevent(device_id, 67)  # DEL
                 if not await self.adb.input_text(device_id, value):
                     raise RuntimeError(f"Failed to input {label} of birth")
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.3)
+                # Commit the typed value into the NumberPicker
+                await self.adb.send_keyevent(device_id, 66)  # ENTER
+                await asyncio.sleep(0.3)
             await asyncio.sleep(1)
             return
 
