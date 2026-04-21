@@ -35,4 +35,10 @@ iptables -t nat -A OUTPUT -p tcp -j REDSOCKS
 iptables -t nat -A PREROUTING -p tcp -j REDSOCKS
 
 echo "Starting redsocks with proxy ${PROXY_HOST}:${PROXY_PORT} (${PROXY_TYPE})"
-exec redsocks -c /etc/redsocks.conf
+redsocks -c /etc/redsocks.conf &
+
+# Keep container alive so /reload.sh can restart redsocks without killing PID 1
+while true; do
+    sleep 3600 &
+    wait $!
+done
