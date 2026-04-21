@@ -240,16 +240,40 @@ class ADBService:
             return True
         # Ensure adb is connected to this device before launching
         await self._ensure_connected(device_id)
-        rc, stdout, stderr = await self._run_adb(
+
+        # Resolve the main launcher activity (monkey is unreliable on Redroid)
+        rc, activity_out, _ = await self._run_adb(
             "-s", device_id, "shell",
-            "monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1"
+            "cmd", "package", "resolve-activity", "--brief",
+            "-c", "android.intent.category.LAUNCHER", package
         )
-        # Redroid sometimes returns non-zero even when monkey launched successfully
-        # (e.g. "SYS_KEYS has no physical keys"). Verify by checking the app process.
+        component = None
+        if rc == 0:
+            for line in activity_out.splitlines():
+                line = line.strip()
+                if "/" in line and line.startswith(package):
+                    component = line
+                    break
+
+        if component:
+            rc, stdout, stderr = await self._run_adb(
+                "-s", device_id, "shell", "am", "start", "-n", component
+            )
+        else:
+            # Fallback: monkey
+            rc, stdout, stderr = await self._run_adb(
+                "-s", device_id, "shell",
+                "monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1"
+            )
+
+        # Verify by process check (Redroid often returns non-zero on success)
         await asyncio.sleep(2)
         if await self.is_app_running(device_id, package):
             return True
-        logger.error(f"launch_app failed on {device_id} ({package}): rc={rc} stdout={stdout!r} stderr={stderr!r}")
+        logger.error(
+            f"launch_app failed on {device_id} ({package}): component={component} rc={rc} "
+            f"stdout={stdout!r} stderr={stderr!r}"
+        )
         return False
 
     async def _ensure_connected(self, device_id: str) -> None:
