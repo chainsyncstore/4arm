@@ -136,11 +136,17 @@ class RegistrationService:
         if use_fallbacks:
             candidates.extend(fallbacks)
 
+        logger.info(
+            f"_tap_target patterns={patterns} matched_center={center} "
+            f"candidates={candidates}"
+        )
+
         for x, y in candidates:
             if await self.adb.tap(device_id, x, y):
                 await asyncio.sleep(1)
                 return True
 
+        logger.warning(f"_tap_target no candidates worked for {patterns}")
         return False
 
     async def _fill_text_field(
