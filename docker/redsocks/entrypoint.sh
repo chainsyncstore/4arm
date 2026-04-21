@@ -23,6 +23,12 @@ iptables -t nat -A REDSOCKS -d 172.16.0.0/12 -j RETURN
 iptables -t nat -A REDSOCKS -d 192.168.0.0/16 -j RETURN
 iptables -t nat -A REDSOCKS -d 224.0.0.0/4 -j RETURN
 iptables -t nat -A REDSOCKS -d 240.0.0.0/4 -j RETURN
+# Exempt upstream proxy host so redsocks can reach it (avoid redirect loop)
+if [ -n "${PROXY_HOST}" ] && [ "${PROXY_HOST}" != "0.0.0.0" ]; then
+    PROXY_IP=$(getent hosts "${PROXY_HOST}" | awk '{print $1}' | head -n1)
+    PROXY_IP=${PROXY_IP:-${PROXY_HOST}}
+    iptables -t nat -A REDSOCKS -d "${PROXY_IP}" -j RETURN
+fi
 iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-ports 12345
 
 iptables -t nat -A OUTPUT -p tcp -j REDSOCKS
