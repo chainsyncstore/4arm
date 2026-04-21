@@ -199,6 +199,63 @@ class ProxyProviderService:
             )
             return proxy
 
+    async def sync_all_from_provider(self) -> dict:
+        """Fetch every proxy available from Webshare and upsert into local DB.
+
+        Paginates through Webshare's /proxy/list endpoint and inserts any
+        proxies not already present (matched by host+port). Safe to re-run.
+
+        Returns a summary dict: {"fetched": N, "created": N, "skipped": N}.
+        """
+        if self.mock_mode:
+            return {"fetched": 0, "created": 0, "skipped": 0, "mock": True}
+
+        page = 1
+        page_size = 100
+        fetched = 0
+        created = 0
+        skipped = 0
+
+        async with self.db_session_maker() as db:
+            existing_result = await db.execute(select(Proxy.host, Proxy.port))
+            existing = {(row[0], row[1]) for row in existing_result.all()}
+
+            while True:
+                batch = await self._get_proxy_list(page=page, page_size=page_size)
+                results = batch.get("results", []) or []
+                if not results:
+                    break
+                fetched += len(results)
+
+                for p in results:
+                    key = (p["proxy_address"], p["port"])
+                    if key in existing:
+                        skipped += 1
+                        continue
+                    db.add(Proxy(
+                        host=p["proxy_address"],
+                        port=p["port"],
+                        username=p.get("username", ""),
+                        password=p.get("password", ""),
+                        protocol=ProxyProtocol.SOCKS5,
+                        country=p.get("country_code", "") or "",
+                        status=ProxyStatus.UNCHECKED,
+                    ))
+                    existing.add(key)
+                    created += 1
+
+                # Stop if this was the last page
+                if len(results) < page_size:
+                    break
+                page += 1
+
+            await db.commit()
+
+        logger.info(
+            f"Synced proxies from Webshare: fetched={fetched}, created={created}, skipped={skipped}"
+        )
+        return {"fetched": fetched, "created": created, "skipped": skipped}
+
     async def release_proxy(self, proxy_id: uuid.UUID) -> bool:
         """Release/burn a proxy.
 

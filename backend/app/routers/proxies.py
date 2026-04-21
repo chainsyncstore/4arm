@@ -87,6 +87,14 @@ async def import_proxies(
         raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
 
 
+@router.post("/provider/sync")
+async def proxy_provider_sync() -> dict:
+    """Bulk-sync every proxy from the configured provider into local DB."""
+    if not _proxy_provider:
+        raise HTTPException(status_code=503, detail="Proxy provider not configured")
+    return await _proxy_provider.sync_all_from_provider()
+
+
 @router.get("/provider/status")
 async def proxy_provider_status() -> dict:
     """Get proxy provider connection status and quota."""
