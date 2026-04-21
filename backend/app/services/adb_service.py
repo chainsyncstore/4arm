@@ -238,11 +238,29 @@ class ADBService:
         if self.mock_mode:
             logger.info(f"MOCK ADB: launch_app {device_id} {package}")
             return True
-        rc, _, _ = await self._run_adb(
+        # Ensure adb is connected to this device before launching
+        await self._ensure_connected(device_id)
+        rc, stdout, stderr = await self._run_adb(
             "-s", device_id, "shell",
             "monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1"
         )
+        if rc != 0:
+            logger.error(f"launch_app failed on {device_id} ({package}): rc={rc} stdout={stdout!r} stderr={stderr!r}")
         return rc == 0
+
+    async def _ensure_connected(self, device_id: str) -> None:
+        """Make sure adb server has an active connection to device_id (host:port)."""
+        if ":" not in device_id:
+            return
+        host, port = device_id.rsplit(":", 1)
+        try:
+            port_int = int(port)
+        except ValueError:
+            return
+        rc, stdout, _ = await self._run_adb("devices")
+        if rc == 0 and f"{device_id}\tdevice" in stdout:
+            return
+        await self.connect(host, port_int)
 
     async def launch_url(self, device_id: str, url: str) -> bool:
         """Launch a URL on the device using ACTION_VIEW."""
