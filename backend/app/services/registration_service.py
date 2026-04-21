@@ -88,18 +88,29 @@ class RegistrationService:
             return None
 
         normalized_patterns = [pattern.lower() for pattern in patterns]
-        # Prefer clickable matches over non-clickable ones so TextView titles
-        # don't shadow the actual Button/EditText we want to tap.
-        clickable_hit: Optional[tuple[int, int]] = None
-        fallback_hit: Optional[tuple[int, int]] = None
+        # Score candidates so real inputs/buttons win over static labels:
+        #   3: EditText / Button + text/desc/resource matches pattern
+        #   2: other node + clickable=true  (e.g. custom views)
+        #   1: anything focusable=true
+        #   0: otherwise (TextView label etc.)
+        best_center: Optional[tuple[int, int]] = None
+        best_score = -1
 
         for node_match in re.finditer(r"<node\b([^>]*)/?>", xml):
             attrs = node_match.group(1)
             text_match = re.search(r'text="([^"]*)"', attrs)
             desc_match = re.search(r'content-desc="([^"]*)"', attrs)
+            resource_match = re.search(r'resource-id="([^"]*)"', attrs)
+            class_match = re.search(r'class="([^"]*)"', attrs)
+            resource_id = resource_match.group(1) if resource_match else ""
+            # resource-id's short name only (after last '/'), which is often the
+            # semantic field name (e.g. "email", "input_password").
+            resource_short = resource_id.rsplit("/", 1)[-1].lower() if resource_id else ""
+            class_name = (class_match.group(1) if class_match else "").lower()
             candidate_text = " ".join(filter(None, [
                 text_match.group(1) if text_match else "",
                 desc_match.group(1) if desc_match else "",
+                resource_short,
             ])).lower()
 
             if not any(pattern in candidate_text for pattern in normalized_patterns):
@@ -112,14 +123,19 @@ class RegistrationService:
             if not center:
                 continue
 
-            is_clickable = 'clickable="true"' in attrs
-            is_focusable = 'focusable="true"' in attrs
-            if is_clickable or is_focusable:
-                return center
-            if fallback_hit is None:
-                fallback_hit = center
+            score = 0
+            if "edittext" in class_name or "button" in class_name:
+                score = 3
+            elif 'clickable="true"' in attrs:
+                score = 2
+            elif 'focusable="true"' in attrs:
+                score = 1
 
-        return clickable_hit or fallback_hit
+            if score > best_score:
+                best_score = score
+                best_center = center
+
+        return best_center
 
     async def _tap_target(
         self,
@@ -208,7 +224,8 @@ class RegistrationService:
         if not await self.spotify.launch_spotify(device_id):
             raise RuntimeError("Failed to launch Spotify")
 
-        await asyncio.sleep(3)
+        # Give Spotify enough time to finish splash and render initial screen
+        await asyncio.sleep(8)
 
         opened_signup = await self._tap_target(
             device_id,
